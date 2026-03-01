@@ -316,8 +316,3 @@ if (userProfile.name) {
   renderSubjects();
   updateDashboard();
 }
-
-    
-  
-
-  
