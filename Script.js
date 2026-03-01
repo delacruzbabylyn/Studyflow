@@ -15,7 +15,7 @@ let userProfile = JSON.parse(localStorage.getItem("studyflowUser")) || {};
 let subjects = JSON.parse(localStorage.getItem("subjects")) || [];
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-let selectedDay = new Date().getDay(); // Today (0=Sun, 1=Mon, ..., 6=Sat)
+let selectedDay = new Date().getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 let editingSubjectId = null;
 let editingTaskId = null;
 
@@ -26,7 +26,7 @@ if (userProfile.name) {
   showMainApp(userProfile.name);
 }
 
-// Set min date = today
+// Prevent past dates
 document.getElementById("taskDate").min = new Date().toISOString().split("T")[0];
 
 enterBtn.addEventListener("click", () => {
@@ -55,8 +55,10 @@ function showMainApp(name) {
   userGreeting.innerHTML = `Hi ${name}! Let's crush this week 📈`;
 
   renderSubjects();
-  switchDay({ target: document.querySelector(`#dayTabs button[data-day="${selectedDay}"]`) });
+  switchDay({ target: document.querySelector(`#dayTabs button[data-day="${selectedDay}"]`) || document.querySelector('#dayTabs button') });
   updateDashboard();
+  checkAndNotifyPending();
+  setInterval(checkAndNotifyPending, 30000); // check every 30s
 }
 
 // ────────────────────────────────────────────────
@@ -96,13 +98,7 @@ function renderSubjects() {
 
   subjects.forEach(sub => {
     const li = document.createElement("li");
-    li.innerHTML = `
-      ${sub.name} (${sub.target}h/week)
-      <div>
-        <button onclick="editSubject(${sub.id})">✏️</button>
-        <button onclick="deleteSubject(${sub.id})">❌</button>
-      </div>
-    `;
+    li.innerHTML = `${sub.name} (${sub.target}h/week) <div><button onclick="editSubject(${sub.id})">✏️</button><button onclick="deleteSubject(${sub.id})">❌</button></div>`;
     subjectList.appendChild(li);
 
     const opt = document.createElement("option");
@@ -112,7 +108,7 @@ function renderSubjects() {
   });
 }
 
-window.editSubject = function(id) {
+window.editSubject = id => {
   const sub = subjects.find(s => s.id === id);
   if (!sub) return;
   document.getElementById("subjectName").value = sub.name;
@@ -120,7 +116,7 @@ window.editSubject = function(id) {
   editingSubjectId = id;
 };
 
-window.deleteSubject = function(id) {
+window.deleteSubject = id => {
   if (!confirm("Delete subject? Tasks will also be removed.")) return;
   subjects = subjects.filter(s => s.id !== id);
   tasks = tasks.filter(t => t.subjectId !== id);
@@ -149,13 +145,16 @@ function handleTask() {
   }
 
   const taskDay = new Date(date).getDay();
+  let thisTaskId;
 
   if (editingTaskId) {
     const t = tasks.find(x => x.id === editingTaskId);
     if (t) Object.assign(t, { subjectId, title, date, time, duration, day: taskDay });
+    thisTaskId = editingTaskId;
     editingTaskId = null;
   } else {
-    tasks.push({ id: Date.now(), subjectId, title, date, time, duration, day: taskDay });
+    thisTaskId = Date.now();
+    tasks.push({ id: thisTaskId, subjectId, title, date, time, duration, day: taskDay });
   }
 
   // Clear form
@@ -168,43 +167,33 @@ function handleTask() {
   saveData();
   renderTasks();
   updateDashboard();
-  scheduleNotification(date, time, title);
+  scheduleNotification(date, time, title, thisTaskId);
 }
 
 function renderTasks() {
   taskList.innerHTML = "";
-  tasks
-    .filter(t => t.day === selectedDay)
-    .forEach(t => {
-      const sub = subjects.find(s => s.id === t.subjectId);
-      const subjName = sub ? sub.name : "Unknown";
+  tasks.filter(t => t.day === selectedDay).forEach(t => {
+    const sub = subjects.find(s => s.id === t.subjectId);
+    const subjName = sub ? sub.name : "Unknown";
 
-      const li = document.createElement("li");
-      li.innerHTML = `
-        ${subjName} – ${t.title} (${t.duration}h @ ${t.time})
-        <div>
-          <button onclick="editTask(${t.id})">✏️</button>
-          <button onclick="deleteTask(${t.id})">❌</button>
-        </div>
-      `;
-      taskList.appendChild(li);
-    });
+    const li = document.createElement("li");
+    li.innerHTML = `${subjName} – ${t.title} (${t.duration}h @ ${t.time}) <div><button onclick="editTask(${t.id})">✏️</button><button onclick="deleteTask(${t.id})">❌</button></div>`;
+    taskList.appendChild(li);
+  });
 }
 
-window.editTask = function(id) {
+window.editTask = id => {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
-
   document.getElementById("taskTitle").value = t.title;
   document.getElementById("taskDate").value = t.date;
   document.getElementById("taskTime").value = t.time;
   document.getElementById("taskDuration").value = t.duration;
   subjectSelect.value = t.subjectId;
-
   editingTaskId = id;
 };
 
-window.deleteTask = function(id) {
+window.deleteTask = id => {
   tasks = tasks.filter(t => t.id !== id);
   saveData();
   renderTasks();
@@ -232,15 +221,15 @@ function switchDay(e) {
 function getCurrentWeekRange() {
   const now = new Date();
   const dayOfWeek = now.getDay();
-  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // to Monday
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
 
   const start = new Date(now);
   start.setDate(now.getDate() + diff);
-  start.setHours(0, 0, 0, 0);
+  start.setHours(0,0,0,0);
 
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
+  end.setHours(23,59,59,999);
 
   return { start, end };
 }
@@ -250,69 +239,93 @@ function updateDashboard() {
 
   const weeklyTasks = tasks.filter(t => {
     const d = new Date(t.date);
-    d.setHours(0, 0, 0, 0);
+    d.setHours(0,0,0,0);
     return d >= start && d <= end;
   });
 
   document.getElementById("totalSubjects").textContent = subjects.length;
-
   const totalHours = weeklyTasks.reduce((sum, t) => sum + t.duration, 0);
   document.getElementById("totalHours").textContent = totalHours.toFixed(1);
 
   const avg = weeklyTasks.length ? (totalHours / weeklyTasks.length).toFixed(2) : "0.00";
   document.getElementById("averageTime").textContent = avg;
 
-  // Most studied
   const count = {};
-  weeklyTasks.forEach(t => {
-    count[t.subjectId] = (count[t.subjectId] || 0) + t.duration;
-  });
-  let maxHours = -1;
-  let mostId = null;
+  weeklyTasks.forEach(t => count[t.subjectId] = (count[t.subjectId] || 0) + t.duration);
+  let maxHours = -1, mostId = null;
   for (let id in count) {
-    if (count[id] > maxHours) {
-      maxHours = count[id];
-      mostId = id;
-    }
+    if (count[id] > maxHours) { maxHours = count[id]; mostId = id; }
   }
-  document.getElementById("mostStudied").textContent =
-    subjects.find(s => s.id == mostId)?.name || "N/A";
+  document.getElementById("mostStudied").textContent = subjects.find(s => s.id == mostId)?.name || "N/A";
 
-  // Progress
   const weeklyTarget = subjects.reduce((sum, s) => sum + (s.target || 0), 0);
   const percent = weeklyTarget > 0 ? Math.min((totalHours / weeklyTarget) * 100, 100) : 0;
   document.getElementById("progressFill").style.width = percent + "%";
   document.getElementById("progressText").textContent = percent.toFixed(1) + "%";
 }
 
-function scheduleNotification(date, time, title) {
-  if (!("Notification" in window)) return;
-  if (Notification.permission === "denied") return;
+// ────────────────────────────────────────────────
+// Notifications – immediate + persistent
+// ────────────────────────────────────────────────
 
-  if (Notification.permission !== "granted") {
+function scheduleNotification(date, time, title, taskId) {
+  if (!("Notification" in window)) return;
+
+  if (Notification.permission !== "granted" && Notification.permission !== "denied") {
     Notification.requestPermission();
   }
+  if (Notification.permission === "denied") return;
 
-  const scheduled = new Date(`${date}T${time}:00`);
-  const diffMs = scheduled - Date.now();
+  const scheduledTime = new Date(`${date}T${time}:00`).getTime();
+  const now = Date.now();
+  const diffMs = scheduledTime - now;
 
-  if (diffMs > 0) {
+  if (diffMs > 0 && diffMs < 86400000) {
     setTimeout(() => {
-      new Notification("📚 Study Time!", {
-        body: `"${title}" starts now!`,
-        icon: "/favicon.ico"
-      });
+      if (Notification.permission === "granted") {
+        new Notification("📚 StudyFlow Reminder", {
+          body: `Time for: "${title}" (${time})`,
+          icon: "/favicon.ico"
+        });
+      }
     }, diffMs);
   }
+
+  let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
+  pending = pending.filter(p => p.taskId !== taskId);
+  pending.push({ taskId, title, date, time, scheduledTime });
+  pending = pending.filter(p => p.scheduledTime > now - 172800000); // keep last 2 days
+  localStorage.setItem("studyflowPendingReminders", JSON.stringify(pending));
+}
+
+function checkAndNotifyPending() {
+  if (Notification.permission !== "granted") return;
+
+  const now = Date.now();
+  let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
+  const toNotify = [];
+  const remaining = [];
+
+  pending.forEach(p => {
+    const diff = p.scheduledTime - now;
+    if (Math.abs(diff) <= 900000) { // ±15 min
+      toNotify.push(p);
+    } else if (diff > 0) {
+      remaining.push(p);
+    }
+  });
+
+  toNotify.forEach(p => {
+    new Notification("📚 Study Reminder", {
+      body: `"${p.title}" was at ${p.time} – time to study!`,
+      icon: "/favicon.ico"
+    });
+  });
+
+  localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
 }
 
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
   localStorage.setItem("tasks", JSON.stringify(tasks));
-}
-
-// Initial load if already logged in
-if (userProfile.name) {
-  renderSubjects();
-  updateDashboard();
 }
