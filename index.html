@@ -8,34 +8,29 @@
 </head>
 <body>
 
-  <!-- Welcome / Onboarding Screen -->
+  <!-- Welcome Screen -->
   <div id="welcomeScreen" class="welcome-screen active">
     <div class="welcome-content">
       <div class="logo-container">
         <h1 class="logo">📚 StudyFlow</h1>
         <p class="tagline">Smart Study Planner & Session Tracker</p>
       </div>
-
       <h2>Welcome!</h2>
       <p>Let's personalize your experience</p>
-
       <div class="form-group">
         <label for="userName">Your Name</label>
         <input type="text" id="userName" placeholder="your name" required>
       </div>
-
       <div class="form-group">
         <label for="userBio">Short Bio / Goal</label>
         <textarea id="userBio" placeholder="e.g. Ace my boards this 2026!" rows="3"></textarea>
       </div>
-
       <button id="enterBtn">Enter StudyFlow →</button>
-
       <p class="tip">We'll remember you next time ✨</p>
     </div>
   </div>
 
-  <!-- Main App Content -->
+  <!-- Main App -->
   <div id="mainApp" class="hidden">
     <header>
       <h1>📚 StudyFlow</h1>
@@ -44,7 +39,7 @@
     </header>
 
     <div class="container">
-      <!-- SUBJECT SECTION -->
+      <!-- Subjects -->
       <div class="card">
         <h2>Manage Subjects</h2>
         <input type="text" id="subjectName" placeholder="Subject Name">
@@ -53,7 +48,7 @@
         <ul id="subjectList"></ul>
       </div>
 
-      <!-- DAY TABS -->
+      <!-- Day Tabs -->
       <div class="tabs" id="dayTabs">
         <button data-day="1" class="active">Monday</button>
         <button data-day="2">Tuesday</button>
@@ -64,7 +59,7 @@
         <button data-day="0">Sunday</button>
       </div>
 
-      <!-- TASK SECTION -->
+      <!-- Tasks -->
       <div class="card">
         <h2 id="selectedDayTitle">Monday Tasks</h2>
         <select id="subjectSelect"><option value="">Select subject</option></select>
@@ -76,14 +71,13 @@
         <ul id="taskList"></ul>
       </div>
 
-      <!-- DASHBOARD -->
+      <!-- Dashboard -->
       <div class="card">
         <h2>Weekly Dashboard</h2>
         <p>Total Subjects: <span id="totalSubjects">0</span></p>
         <p>Total Study Hours: <span id="totalHours">0</span></p>
         <p>Most Studied Subject: <span id="mostStudied">N/A</span></p>
         <p>Average Study Time per Task: <span id="averageTime">0</span> h</p>
-
         <div class="progress-bar">
           <div id="progressFill"></div>
         </div>
@@ -91,6 +85,12 @@
       </div>
     </div>
   </div>
+
+  <!-- Notification Sound -->
+  <audio id="notifyChime" preload="auto">
+    <source src="notification.mp3" type="audio/mpeg">
+    Your browser does not support audio.
+  </audio>
 
   <script src="Script.js"></script>
 </body>
