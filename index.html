@@ -1,1 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyFlow</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+  <!-- Welcome / Onboarding Screen -->
+  <div id="welcomeScreen" class="welcome-screen active">
+    <div class="welcome-content">
+      <div class="logo-container">
+        <h1 class="logo">📚 StudyFlow</h1>
+        <p class="tagline">Smart Study Planner & Session Tracker</p>
+      </div>
+
+      <h2>Welcome!</h2>
+      <p>Let's personalize your experience</p>
+
+      <div class="form-group">
+        <label for="userName">Your Name</label>
+        <input type="text" id="userName" placeholder="your name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="userBio">Short Bio / Goal</label>
+        <textarea id="userBio" placeholder="e.g. Ace my boards this 2026!" rows="3"></textarea>
+      </div>
+
+      <button id="enterBtn">Enter StudyFlow →</button>
+
+      <p class="tip">We'll remember you next time ✨</p>
+    </div>
+  </div>
+
+  <!-- Main App Content -->
+  <div id="mainApp" class="hidden">
+    <header>
+      <h1>📚 StudyFlow</h1>
+      <p>Smart Study Planner & Session Tracker</p>
+      <div id="userGreeting"></div>
+    </header>
+
+    <div class="container">
+      <!-- SUBJECT SECTION -->
+      <div class="card">
+        <h2>Manage Subjects</h2>
+        <input type="text" id="subjectName" placeholder="Subject Name">
+        <input type="number" id="targetHours" placeholder="Target Weekly Hours" step="0.5" min="0">
+        <button id="addSubjectBtn">Add / Update Subject</button>
+        <ul id="subjectList"></ul>
+      </div>
+
+      <!-- DAY TABS -->
+      <div class="tabs" id="dayTabs">
+        <button data-day="1" class="active">Monday</button>
+        <button data-day="2">Tuesday</button>
+        <button data-day="3">Wednesday</button>
+        <button data-day="4">Thursday</button>
+        <button data-day="5">Friday</button>
+        <button data-day="6">Saturday</button>
+        <button data-day="0">Sunday</button>
+      </div>
+
+      <!-- TASK SECTION -->
+      <div class="card">
+        <h2 id="selectedDayTitle">Monday Tasks</h2>
+        <select id="subjectSelect"><option value="">Select subject</option></select>
+        <input type="text" id="taskTitle" placeholder="Task Title (e.g. Chapter 5 Review)">
+        <input type="date" id="taskDate" min="">
+        <input type="time" id="taskTime">
+        <input type="number" id="taskDuration" placeholder="Duration (hours)" step="0.5" min="0.25">
+        <button id="addTaskBtn">Add / Update Task</button>
+        <ul id="taskList"></ul>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="card">
+        <h2>Weekly Dashboard</h2>
+        <p>Total Subjects: <span id="totalSubjects">0</span></p>
+        <p>Total Study Hours: <span id="totalHours">0</span></p>
+        <p>Most Studied Subject: <span id="mostStudied">N/A</span></p>
+        <p>Average Study Time per Task: <span id="averageTime">0</span> h</p>
+
+        <div class="progress-bar">
+          <div id="progressFill"></div>
+        </div>
+        <p id="progressText">0%</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
