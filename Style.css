@@ -1,0 +1,138 @@
+/* Welcome Screen */
+.welcome-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  transition: opacity 0.6s ease;
+}
+
+.welcome-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome-content {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(10px);
+  padding: 2.5rem 2rem;
+  border-radius: 16px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.logo { font-size: 3.2rem; margin: 0; font-weight: 800; }
+.tagline { margin: 0.4rem 0 1.5rem; opacity: 0.9; }
+
+/* General */
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+header {
+  background: #2d6cdf;
+  color: white;
+  text-align: center;
+  padding: 1.2rem;
+}
+
+.container {
+  width: 95%;
+  max-width: 1100px;
+  margin: auto;
+  padding: 1rem 0;
+}
+
+.card {
+  background: white;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.tabs button {
+  padding: 0.6rem 1.2rem;
+  margin: 0.3rem;
+  border: none;
+  background: #e2e8f0;
+  color: #475569;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.tabs button.active {
+  background: #2d6cdf;
+  color: white;
+}
+
+ul { list-style: none; padding: 0; margin: 1rem 0; }
+
+li {
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0.8rem 1rem;
+  margin: 0.5rem 0;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+button {
+  padding: 0.5rem 0.9rem;
+  background: #2d6cdf;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+button:hover { background: #1e40af; }
+
+input, select, textarea {
+  width: 100%;
+  padding: 0.6rem;
+  margin: 0.5rem 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.progress-bar {
+  width: 100%;
+  background: #e2e8f0;
+  height: 1.2rem;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+#progressFill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10b981, #3b82f6);
+  transition: width 0.4s ease;
+}
+
+.form-group { margin: 1rem 0; text-align: left; }
+.form-group label { display: block; margin-bottom: 0.4rem; font-weight: 500; }
