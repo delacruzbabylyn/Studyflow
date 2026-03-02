@@ -3,7 +3,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDYr2dovq2g4py7th0saw70Uc_cJRNM_ak",
