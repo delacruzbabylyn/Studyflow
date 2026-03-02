@@ -348,4 +348,4 @@ function checkAndNotifyPending() {
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
   localStorage.setItem("tasks", JSON.stringify(tasks));
-                     }
+}
