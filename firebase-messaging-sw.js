@@ -1,9 +1,14 @@
 // firebase-messaging-sw.js
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+importScripts("https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js");
+importScripts("https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js");
 
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
-
+// Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDYr2dovq2g4py7th0saw70Uc_cJRNM_ak",
@@ -14,6 +19,10 @@ const firebaseConfig = {
   appId: "1:811045907624:web:475a0884919080dcae669d",
   measurementId: "G-Z4127WVYPQ"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 const messaging = firebase.messaging();
 
