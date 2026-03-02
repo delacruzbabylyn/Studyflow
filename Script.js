@@ -19,8 +19,12 @@ let selectedDay = new Date().getDay();
 let editingSubjectId = null;
 let editingTaskId = null;
 
-// Init
-if (userProfile.name) showMainApp(userProfile.name);
+// ────────────────────────────────────────────────
+// Init & Welcome
+// ────────────────────────────────────────────────
+if (userProfile.name) {
+  showMainApp(userProfile.name);
+}
 
 document.getElementById("taskDate").min = new Date().toISOString().split("T")[0];
 
@@ -47,7 +51,7 @@ function showMainApp(name) {
   checkAndNotifyPending();
   setInterval(checkAndNotifyPending, 30000);
 
-  // Unlock sound on first tap/click
+  // Unlock sound on first interaction
   const unlock = () => {
     new Audio("notification.mp3").play().catch(() => {}).then(a => a?.pause?.());
     document.removeEventListener('click', unlock);
@@ -57,15 +61,24 @@ function showMainApp(name) {
   document.addEventListener('touchstart', unlock, { once: true });
 }
 
-// Subjects
+// ────────────────────────────────────────────────
+// Subjects – Add / Edit / Delete
+// ────────────────────────────────────────────────
 document.getElementById("addSubjectBtn").addEventListener("click", () => {
   const name = document.getElementById("subjectName").value.trim();
   const target = parseFloat(document.getElementById("targetHours").value);
-  if (!name || isNaN(target) || target < 0) return alert("Invalid input");
 
-  if (editingSubjectId) {
+  if (!name || isNaN(target) || target < 0) {
+    alert("Please enter subject name and valid weekly hours");
+    return;
+  }
+
+  if (editingSubjectId !== null) {
     const sub = subjects.find(s => s.id === editingSubjectId);
-    if (sub) { sub.name = name; sub.target = target; }
+    if (sub) {
+      sub.name = name;
+      sub.target = target;
+    }
     editingSubjectId = null;
   } else {
     subjects.push({ id: Date.now(), name, target });
@@ -85,7 +98,13 @@ function renderSubjects() {
 
   subjects.forEach(sub => {
     const li = document.createElement("li");
-    li.innerHTML = `${sub.name} (${sub.target}h/week) <div><button onclick="editSubject(${sub.id})">✏️</button> <button onclick="deleteSubject(${sub.id})">❌</button></div>`;
+    li.innerHTML = `
+      ${sub.name} (${sub.target}h/week)
+      <div>
+        <button onclick="editSubject(${sub.id})">✏️ Edit</button>
+        <button onclick="deleteSubject(${sub.id})">❌ Delete</button>
+      </div>
+    `;
     subjectList.appendChild(li);
 
     const opt = document.createElement("option");
@@ -95,17 +114,16 @@ function renderSubjects() {
   });
 }
 
-window.editSubject = id => {
+window.editSubject = function(id) {
   const sub = subjects.find(s => s.id === id);
-  if (sub) {
-    document.getElementById("subjectName").value = sub.name;
-    document.getElementById("targetHours").value = sub.target;
-    editingSubjectId = id;
-  }
+  if (!sub) return;
+  document.getElementById("subjectName").value = sub.name;
+  document.getElementById("targetHours").value = sub.target;
+  editingSubjectId = id;
 };
 
-window.deleteSubject = id => {
-  if (!confirm("Delete this subject and its tasks?")) return;
+window.deleteSubject = function(id) {
+  if (!confirm("Delete this subject and all its tasks?")) return;
   subjects = subjects.filter(s => s.id !== id);
   tasks = tasks.filter(t => t.subjectId !== id);
   saveData();
@@ -114,7 +132,9 @@ window.deleteSubject = id => {
   updateDashboard();
 };
 
-// Tasks
+// ────────────────────────────────────────────────
+// Tasks – Add / Edit / Delete + Day Switching
+// ────────────────────────────────────────────────
 document.getElementById("addTaskBtn").addEventListener("click", handleTask);
 document.getElementById("dayTabs").addEventListener("click", switchDay);
 
@@ -126,15 +146,18 @@ function handleTask() {
   const duration = parseFloat(document.getElementById("taskDuration").value);
 
   if (!subjectId || !title || !date || !time || isNaN(duration) || duration <= 0) {
-    return alert("Please complete all fields!");
+    alert("Please complete all task fields correctly!");
+    return;
   }
 
   const taskDay = new Date(date).getDay();
   let thisTaskId;
 
-  if (editingTaskId) {
+  if (editingTaskId !== null) {
     const t = tasks.find(x => x.id === editingTaskId);
-    if (t) Object.assign(t, { subjectId, title, date, time, duration, day: taskDay });
+    if (t) {
+      Object.assign(t, { subjectId, title, date, time, duration, day: taskDay });
+    }
     thisTaskId = editingTaskId;
     editingTaskId = null;
   } else {
@@ -142,6 +165,7 @@ function handleTask() {
     tasks.push({ id: thisTaskId, subjectId, title, date, time, duration, day: taskDay });
   }
 
+  // Clear form
   subjectSelect.value = "";
   document.getElementById("taskTitle").value = "";
   document.getElementById("taskDate").value = "";
@@ -160,24 +184,29 @@ function renderTasks() {
     const sub = subjects.find(s => s.id === t.subjectId);
     const subjName = sub ? sub.name : "Unknown";
     const li = document.createElement("li");
-    li.innerHTML = `${subjName} – ${t.title} (${t.duration}h @ ${t.time}) <div><button onclick="editTask(${t.id})">✏️</button> <button onclick="deleteTask(${t.id})">❌</button></div>`;
+    li.innerHTML = `
+      ${subjName} – ${t.title} (${t.duration}h @ ${t.time})
+      <div>
+        <button onclick="editTask(${t.id})">✏️ Edit</button>
+        <button onclick="deleteTask(${t.id})">❌ Delete</button>
+      </div>
+    `;
     taskList.appendChild(li);
   });
 }
 
-window.editTask = id => {
+window.editTask = function(id) {
   const t = tasks.find(x => x.id === id);
-  if (t) {
-    document.getElementById("taskTitle").value = t.title;
-    document.getElementById("taskDate").value = t.date;
-    document.getElementById("taskTime").value = t.time;
-    document.getElementById("taskDuration").value = t.duration;
-    subjectSelect.value = t.subjectId;
-    editingTaskId = id;
-  }
+  if (!t) return;
+  document.getElementById("taskTitle").value = t.title;
+  document.getElementById("taskDate").value = t.date;
+  document.getElementById("taskTime").value = t.time;
+  document.getElementById("taskDuration").value = t.duration;
+  subjectSelect.value = t.subjectId;
+  editingTaskId = id;
 };
 
-window.deleteTask = id => {
+window.deleteTask = function(id) {
   tasks = tasks.filter(t => t.id !== id);
   saveData();
   renderTasks();
@@ -199,7 +228,9 @@ function switchDay(e) {
   renderTasks();
 }
 
+// ────────────────────────────────────────────────
 // Dashboard
+// ────────────────────────────────────────────────
 function getCurrentWeekRange() {
   const now = new Date();
   const dayOfWeek = now.getDay();
@@ -245,12 +276,14 @@ function updateDashboard() {
   document.getElementById("progressText").textContent = percent.toFixed(1) + "%";
 }
 
-// Notifications + Sound
+// ────────────────────────────────────────────────
+// Notifications with Sound
+// ────────────────────────────────────────────────
 function playChime() {
   const chime = document.getElementById("notifyChime");
   if (chime) {
     chime.currentTime = 0;
-    chime.play().catch(e => console.log("Sound needs interaction:", e));
+    chime.play().catch(e => console.log("Sound needs user interaction first:", e));
   } else {
     new Audio("notification.mp3").play().catch(e => console.log("Sound failed:", e));
   }
@@ -312,8 +345,7 @@ function checkAndNotifyPending() {
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
 }
 
-}
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
   localStorage.setItem("tasks", JSON.stringify(tasks));
-}
+                     }
