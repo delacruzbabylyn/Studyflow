@@ -311,14 +311,7 @@ function checkAndNotifyPending() {
 
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
 }
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    .then(function(registration) {
-      console.log('Service Worker registered:', registration);
-    })
-    .catch(function(error) {
-      console.log('Service Worker registration failed:', error);
-    });
+
 }
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
