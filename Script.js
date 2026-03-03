@@ -262,97 +262,63 @@ function updateDashboard() {
   document.getElementById("progressText").textContent = percent.toFixed(1) + "%";
 }
 
-// ────────────────────────────────────────────────
-// Helper - safe notification sender
-// ────────────────────────────────────────────────
-function safeNotify(title, options = {}) {
-  if (Notification.permission !== "granted") return false;
-  try {
-    new Notification(title, {
-      icon: "/favicon.ico",
-      ...options
-    });
-    playChime?.(); // optional chaining in case function missing
-    return true;
-  } catch (err) {
-    console.warn("Notification failed", err);
-    return false;
-  }
-}
+// Notification Permission Handling
+const enableNotifBtn = document.getElementById('enableNotifications');
+const notifStatus = document.getElementById('notifStatus'); // optional, kung may span ka
 
-// When scheduling a new task / reminder
-function scheduleReminder(taskId, title, dueTimestamp) {
-  const now = Date.now();
-  const diffMs = dueTimestamp - now;
-
-  // Option A: short future → use setTimeout
-  if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
-    setTimeout(() => {
-      safeNotify("📚 StudyFlow Reminder", {
-        body: `Time for: "${title}" (${new Date(dueTimestamp).toLocaleTimeString()})`
-      });
-    }, diffMs);
+function updateNotifUI() {
+  if (!("Notification" in window)) {
+    if (enableNotifBtn) enableNotifBtn.disabled = true;
+    if (notifStatus) notifStatus.textContent = "(Notifications not supported)";
+    return;
   }
 
-  // Always save to persistent queue (this is the important part)
-  let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
-  // Remove old version of same task
-  pending = pending.filter(p => p.taskId !== taskId);
-  pending.push({
-    taskId,
-    title,
-    scheduledTime: dueTimestamp,
-    createdAt: now
-  });
-  // Keep only recent + future items
-  pending = pending.filter(p => p.scheduledTime > now - 2 * 86400000);
-  localStorage.setItem("studyflowPendingReminders", JSON.stringify(pending));
-}
-
-// The periodic checker (every 1–3 min is usually enough)
-function checkAndNotifyPending() {
-  if (Notification.permission !== "granted") return;
-
-  const now = Date.now();
-  let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
-  const toNotify = [];
-  const keep = [];
-
-  for (const p of pending) {
-    const diff = p.scheduledTime - now;
-    if (diff <= 900_000 && diff >= -900_000) { // ±15 min window
-      toNotify.push(p);
-    } else if (diff > -86400000 * 2) { // don't keep very old items
-      keep.push(p);
+  if (Notification.permission === "granted") {
+    if (enableNotifBtn) {
+      enableNotifBtn.textContent = "Notifications Enabled ✓";
+      enableNotifBtn.disabled = true;
     }
+    if (notifStatus) notifStatus.textContent = "Reminders are ON";
+    checkAndNotifyPending(); // catch any missed ones
+  } else if (Notification.permission === "denied") {
+    if (enableNotifBtn) enableNotifBtn.disabled = true;
+    if (notifStatus) notifStatus.textContent = "Notifications blocked (check browser settings)";
+  } else {
+    // default → show button
+    if (enableNotifBtn) enableNotifBtn.style.display = "inline-block";
   }
-
-  toNotify.forEach(p => {
-    safeNotify("📚 Study Reminder", {
-      body: `"${p.title}" ${p.scheduledTime < now ? "was" : "is"} due at ${new Date(p.scheduledTime).toLocaleTimeString()}`
-    });
-  });
-
-  localStorage.setItem("studyflowPendingReminders", JSON.stringify(keep));
 }
 
-// On page load / visibility change
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    checkAndNotifyPending();
-  }
+// Click handler
+if (enableNotifBtn) {
+  enableNotifBtn.addEventListener('click', () => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          console.log("Notifications granted!");
+          updateNotifUI();
+          // Optional: agad i-check pending reminders
+          checkAndNotifyPending();
+        } else {
+          console.log("Notifications denied");
+          updateNotifUI();
+        }
+      }).catch(err => {
+        console.error("Permission request error:", err);
+      });
+    }
+  });
+}
+
+// Run on page load / after login
+document.addEventListener('DOMContentLoaded', () => {
+  updateNotifUI();
+  // ... your other init code ...
 });
 
-// Periodic check
-setInterval(checkAndNotifyPending, 90_000); // 1.5 minutes - reasonable compromise
-
-// Initial permission request (you can call this on first relevant user action)
-function requestNotificationPermission() {
-  if ("Notification" in window && Notification.permission === "default") {
-    Notification.requestPermission().then(perm => {
-      if (perm === "granted") {
-        checkAndNotifyPending(); // catch any missed ones right after permission
-      }
-    });
-  }
-}
+// Pwede ring tawagin pagkatapos mag-enter sa main app
+// Halimbawa sa enterBtn click handler mo, idagdag:
+document.getElementById('enterBtn').addEventListener('click', () => {
+  // ... your existing code ...
+  updateNotifUI();   // ← dagdag
+});
