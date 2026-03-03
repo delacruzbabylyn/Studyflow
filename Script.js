@@ -263,86 +263,96 @@ function updateDashboard() {
 }
 
 // ────────────────────────────────────────────────
-// Notifications
+// Helper - safe notification sender
 // ────────────────────────────────────────────────
-function playChime() {
-  const chime = document.getElementById("notifyChime");
-  if (chime) {
-    chime.currentTime = 0;
-    chime.play().catch(e => console.log("Sound needs interaction:", e));
+function safeNotify(title, options = {}) {
+  if (Notification.permission !== "granted") return false;
+  try {
+    new Notification(title, {
+      icon: "/favicon.ico",
+      ...options
+    });
+    playChime?.(); // optional chaining in case function missing
+    return true;
+  } catch (err) {
+    console.warn("Notification failed", err);
+    return false;
   }
 }
 
-function scheduleNotification(date, time, title, taskId) {
-  if (!("Notification" in window)) return;
-  if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
-  }
-  if (Notification.permission === "denied") return;
-
-  const scheduledTime = new Date(`${date}T${time}:00`).getTime();
+// When scheduling a new task / reminder
+function scheduleReminder(taskId, title, dueTimestamp) {
   const now = Date.now();
-  const diffMs = scheduledTime - now;
+  const diffMs = dueTimestamp - now;
 
-  if (diffMs > 0 && diffMs < 86400000) { // within 24h
+  // Option A: short future → use setTimeout
+  if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
     setTimeout(() => {
-      if (Notification.permission === "granted") {
-        new Notification("📚 StudyFlow Reminder", {
-          body: `Time for: "${title}" (${time})`,
-          icon: "/favicon.ico"
-        });
-        playChime();
-      }
+      safeNotify("📚 StudyFlow Reminder", {
+        body: `Time for: "${title}" (${new Date(dueTimestamp).toLocaleTimeString()})`
+      });
     }, diffMs);
-    soundTip.style.display = "block";
-    setTimeout(() => { soundTip.style.display = "none"; }, 8000);
   }
 
+  // Always save to persistent queue (this is the important part)
   let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
+  // Remove old version of same task
   pending = pending.filter(p => p.taskId !== taskId);
-  pending.push({ taskId, title, date, time, scheduledTime });
-  pending = pending.filter(p => p.scheduledTime > now - 172800000); // keep ~2 days
+  pending.push({
+    taskId,
+    title,
+    scheduledTime: dueTimestamp,
+    createdAt: now
+  });
+  // Keep only recent + future items
+  pending = pending.filter(p => p.scheduledTime > now - 2 * 86400000);
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(pending));
 }
 
+// The periodic checker (every 1–3 min is usually enough)
 function checkAndNotifyPending() {
   if (Notification.permission !== "granted") return;
+
   const now = Date.now();
   let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
   const toNotify = [];
-  const remaining = [];
-  pending.forEach(p => {
+  const keep = [];
+
+  for (const p of pending) {
     const diff = p.scheduledTime - now;
-    if (Math.abs(diff) <= 900000) toNotify.push(p); // within ~15 min
-    else if (diff > 0) remaining.push(p);
-  });
+    if (diff <= 900_000 && diff >= -900_000) { // ±15 min window
+      toNotify.push(p);
+    } else if (diff > -86400000 * 2) { // don't keep very old items
+      keep.push(p);
+    }
+  }
 
   toNotify.forEach(p => {
-    new Notification("📚 Study Reminder", {
-      body: `"${p.title}" was at ${p.time} – time to study!`,
-      icon: "/favicon.ico"
+    safeNotify("📚 Study Reminder", {
+      body: `"${p.title}" ${p.scheduledTime < now ? "was" : "is"} due at ${new Date(p.scheduledTime).toLocaleTimeString()}`
     });
-    playChime();
   });
 
-  localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
+  localStorage.setItem("studyflowPendingReminders", JSON.stringify(keep));
 }
 
-function saveData() {
-  localStorage.setItem("subjects", JSON.stringify(subjects));
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-}
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    .then(function(registration) {
-      console.log("Service Worker Registered");
-    });
-}
-const messaging = firebase.messaging();
-
-Notification.requestPermission().then(() => {
-  return messaging.getToken();
-}).then(token => {
-  console.log("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:", token);
+// On page load / visibility change
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    checkAndNotifyPending();
+  }
 });
+
+// Periodic check
+setInterval(checkAndNotifyPending, 90_000); // 1.5 minutes - reasonable compromise
+
+// Initial permission request (you can call this on first relevant user action)
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission().then(perm => {
+      if (perm === "granted") {
+        checkAndNotifyPending(); // catch any missed ones right after permission
+      }
+    });
+  }
+}
