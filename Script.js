@@ -276,76 +276,36 @@ function updateDashboard() {
   document.getElementById("progressText").textContent = percent.toFixed(1) + "%";
 }
 
-// ────────────────────────────────────────────────
-// Notifications with Sound
-// ────────────────────────────────────────────────
-function playChime() {
-  const chime = document.getElementById("notifyChime");
-  if (chime) {
-    chime.currentTime = 0;
-    chime.play().catch(e => console.log("Sound needs user interaction first:", e));
-  } else {
-    new Audio("notification.mp3").play().catch(e => console.log("Sound failed:", e));
-  }
-}
-
-function scheduleNotification(date, time, title, taskId) {
+function scheduleNotification(date, time, title) {
   if (!("Notification" in window)) return;
 
-  if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+  if (Notification.permission !== "granted") {
     Notification.requestPermission();
   }
-  if (Notification.permission === "denied") return;
 
-  const scheduledTime = new Date(`${date}T${time}:00`).getTime();
-  const now = Date.now();
-  const diffMs = scheduledTime - now;
+  const scheduled = new Date(${date}T${time}:00);
+  const now = new Date();
+  const diffMs = scheduled - now;
 
-  if (diffMs > 0 && diffMs < 86400000) {
+  if (diffMs > 0) {
     setTimeout(() => {
-      if (Notification.permission === "granted") {
-        new Notification("📚 StudyFlow Reminder", {
-          body: `Time for: "${title}" (${time})`,
-          icon: "/favicon.ico"
-        });
-        playChime();
-      }
+      new Notification("📚 Study Reminder", {
+        body: "${title}" starts now!,
+        icon: "/favicon.ico" // optional
+      });
     }, diffMs);
   }
-
-  let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
-  pending = pending.filter(p => p.taskId !== taskId);
-  pending.push({ taskId, title, date, time, scheduledTime });
-  pending = pending.filter(p => p.scheduledTime > now - 172800000);
-  localStorage.setItem("studyflowPendingReminders", JSON.stringify(pending));
-}
-
-function checkAndNotifyPending() {
-  if (Notification.permission !== "granted") return;
-
-  const now = Date.now();
-  let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
-  const toNotify = [];
-  const remaining = [];
-
-  pending.forEach(p => {
-    const diff = p.scheduledTime - now;
-    if (Math.abs(diff) <= 900000) toNotify.push(p);
-    else if (diff > 0) remaining.push(p);
-  });
-
-  toNotify.forEach(p => {
-    new Notification("📚 Study Reminder", {
-      body: `"${p.title}" was at ${p.time} – time to study!`,
-      icon: "/favicon.ico"
-    });
-    playChime();
-  });
-
-  localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
 }
 
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
   localStorage.setItem("tasks", JSON.stringify(tasks));
 }
+
+// Initial render (only if already logged in)
+if (userProfile.name) {
+  renderSubjects();
+  renderTasks();
+  updateDashboard();
+}
+
