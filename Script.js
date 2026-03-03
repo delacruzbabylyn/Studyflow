@@ -327,6 +327,7 @@ function checkAndNotifyPending() {
 
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
 }
+<a href="https://Studyflow"><img src="https://delacruzabylyn.github.io/Studyflow" alt="Logo"></a>
 
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
