@@ -333,3 +333,16 @@ function saveData() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 }
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    .then(function(registration) {
+      console.log("Service Worker Registered");
+    });
+}
+const messaging = firebase.messaging();
+
+Notification.requestPermission().then(() => {
+  return messaging.getToken();
+}).then(token => {
+  console.log("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:", token);
+});
