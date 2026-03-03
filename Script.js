@@ -332,3 +332,22 @@ function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
   localStorage.setItem("tasks", JSON.stringify(tasks));
 }
+
+// Custom registration para sa subfolder repo (studyflow-pro)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    // Para sa GitHub Pages subfolder: https://username.github.io/studyflow-pro/
+    const swPath = '/Studyflow/firebase-messaging-sw.js';
+    const scopePath = '/Studyflow/';
+
+    navigator.serviceWorker.register(swPath, { scope: scopePath })
+      .then(registration => {
+        console.log('Service Worker registered sa subfolder:', registration.scope);
+      })
+      .catch(err => {
+        console.error('Service Worker registration failed:', err);
+        // Alert para makita mo kung ano ang problema
+        alert('Error sa Service Worker: ' + err.message + '\nSiguraduhing may firebase-messaging-sw.js sa root ng repo at HTTPS ang site.');
+      });
+  });
+}
