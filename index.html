@@ -149,21 +149,6 @@ const firebaseConfig = {
     // requestNotificationPermission();
   </script>
 
-  <!-- Register Firebase Service Worker -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
-          .then(registration => {
-            console.log('Firebase SW registered! Scope:', registration.scope);
-          })
-          .catch(err => {
-            console.error('SW registration failed:', err);
-            alert('Service Worker error: ' + err.message + '\nSiguraduhing may firebase-messaging-sw.js at HTTPS ang site.');
-          });
-      });
-    }
-  </script>
 
   <!-- Your original app script -->
   <script src="Script.js"></script>
