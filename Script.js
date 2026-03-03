@@ -8,6 +8,8 @@ const userGreeting = document.getElementById("userGreeting");
 const subjectList = document.getElementById("subjectList");
 const subjectSelect = document.getElementById("subjectSelect");
 const taskList = document.getElementById("taskList");
+const soundTip = document.getElementById("soundTip");
+
 // Data
 let userProfile = JSON.parse(localStorage.getItem("studyflowUser")) || {};
 let subjects = JSON.parse(localStorage.getItem("subjects")) || [];
@@ -15,13 +17,16 @@ let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 let selectedDay = new Date().getDay();
 let editingSubjectId = null;
 let editingTaskId = null;
+
 // ────────────────────────────────────────────────
 // Init & Welcome
 // ────────────────────────────────────────────────
 if (userProfile.name) {
   showMainApp(userProfile.name);
 }
+
 document.getElementById("taskDate").min = new Date().toISOString().split("T")[0];
+
 enterBtn.addEventListener("click", () => {
   const name = userNameInput.value.trim();
   if (!name) return alert("Please enter your name!");
@@ -29,6 +34,7 @@ enterBtn.addEventListener("click", () => {
   localStorage.setItem("studyflowUser", JSON.stringify(userProfile));
   showMainApp(name);
 });
+
 function showMainApp(name) {
   welcomeScreen.classList.add("hidden");
   setTimeout(() => {
@@ -41,17 +47,21 @@ function showMainApp(name) {
   updateDashboard();
   checkAndNotifyPending();
   setInterval(checkAndNotifyPending, 30000);
-  // Unlock sound on first interaction
-  const unlock = () => {
-    new Audio("notification.mp3").play().catch(() => {}).then(a => a?.pause?.());
-    document.removeEventListener('click', unlock);
-    document.removeEventListener('touchstart', unlock);
+
+  // Unlock audio context on first real interaction
+  const unlockAudio = () => {
+    const audio = new Audio("notification.mp3");
+    audio.volume = 0.01;
+    audio.play().catch(() => {}).then(() => audio.pause());
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchstart', unlockAudio);
   };
-  document.addEventListener('click', unlock, { once: true });
-  document.addEventListener('touchstart', unlock, { once: true });
+  document.addEventListener('click', unlockAudio, { once: true });
+  document.addEventListener('touchstart', unlockAudio, { once: true });
 }
+
 // ────────────────────────────────────────────────
-// Subjects – Add / Edit / Delete
+// Subjects
 // ────────────────────────────────────────────────
 document.getElementById("addSubjectBtn").addEventListener("click", () => {
   const name = document.getElementById("subjectName").value.trim();
@@ -76,6 +86,7 @@ document.getElementById("addSubjectBtn").addEventListener("click", () => {
   renderSubjects();
   updateDashboard();
 });
+
 function renderSubjects() {
   subjectList.innerHTML = "";
   subjectSelect.innerHTML = '<option value="">Select subject</option>';
@@ -89,12 +100,14 @@ function renderSubjects() {
       </div>
     `;
     subjectList.appendChild(li);
+
     const opt = document.createElement("option");
     opt.value = sub.id;
     opt.textContent = sub.name;
     subjectSelect.appendChild(opt);
   });
 }
+
 window.editSubject = function(id) {
   const sub = subjects.find(s => s.id === id);
   if (!sub) return;
@@ -102,6 +115,7 @@ window.editSubject = function(id) {
   document.getElementById("targetHours").value = sub.target;
   editingSubjectId = id;
 };
+
 window.deleteSubject = function(id) {
   if (!confirm("Delete this subject and all its tasks?")) return;
   subjects = subjects.filter(s => s.id !== id);
@@ -111,23 +125,28 @@ window.deleteSubject = function(id) {
   renderTasks();
   updateDashboard();
 };
+
 // ────────────────────────────────────────────────
-// Tasks – Add / Edit / Delete + Day Switching
+// Tasks + Day Switching
 // ────────────────────────────────────────────────
 document.getElementById("addTaskBtn").addEventListener("click", handleTask);
 document.getElementById("dayTabs").addEventListener("click", switchDay);
+
 function handleTask() {
   const subjectId = parseInt(subjectSelect.value);
   const title = document.getElementById("taskTitle").value.trim();
   const date = document.getElementById("taskDate").value;
   const time = document.getElementById("taskTime").value;
   const duration = parseFloat(document.getElementById("taskDuration").value);
+
   if (!subjectId || !title || !date || !time || isNaN(duration) || duration <= 0) {
     alert("Please complete all task fields correctly!");
     return;
   }
+
   const taskDay = new Date(date).getDay();
   let thisTaskId;
+
   if (editingTaskId !== null) {
     const t = tasks.find(x => x.id === editingTaskId);
     if (t) {
@@ -139,17 +158,20 @@ function handleTask() {
     thisTaskId = Date.now();
     tasks.push({ id: thisTaskId, subjectId, title, date, time, duration, day: taskDay });
   }
+
   // Clear form
   subjectSelect.value = "";
   document.getElementById("taskTitle").value = "";
   document.getElementById("taskDate").value = "";
   document.getElementById("taskTime").value = "";
   document.getElementById("taskDuration").value = "";
+
   saveData();
   renderTasks();
   updateDashboard();
   scheduleNotification(date, time, title, thisTaskId);
 }
+
 function renderTasks() {
   taskList.innerHTML = "";
   tasks.filter(t => t.day === selectedDay).forEach(t => {
@@ -166,6 +188,7 @@ function renderTasks() {
     taskList.appendChild(li);
   });
 }
+
 window.editTask = function(id) {
   const t = tasks.find(x => x.id === id);
   if (!t) return;
@@ -176,12 +199,14 @@ window.editTask = function(id) {
   subjectSelect.value = t.subjectId;
   editingTaskId = id;
 };
+
 window.deleteTask = function(id) {
   tasks = tasks.filter(t => t.id !== id);
   saveData();
   renderTasks();
   updateDashboard();
 };
+
 function switchDay(e) {
   const btn = e.target.closest("button");
   if (!btn || !btn.dataset.day) return;
@@ -192,6 +217,7 @@ function switchDay(e) {
   document.getElementById("selectedDayTitle").textContent = days[selectedDay] + " Tasks";
   renderTasks();
 }
+
 // ────────────────────────────────────────────────
 // Dashboard
 // ────────────────────────────────────────────────
@@ -207,6 +233,7 @@ function getCurrentWeekRange() {
   end.setHours(23,59,59,999);
   return { start, end };
 }
+
 function updateDashboard() {
   const { start, end } = getCurrentWeekRange();
   const weeklyTasks = tasks.filter(t => {
@@ -214,11 +241,13 @@ function updateDashboard() {
     d.setHours(0,0,0,0);
     return d >= start && d <= end;
   });
+
   document.getElementById("totalSubjects").textContent = subjects.length;
   const totalHours = weeklyTasks.reduce((sum, t) => sum + t.duration, 0);
   document.getElementById("totalHours").textContent = totalHours.toFixed(1);
   const avg = weeklyTasks.length ? (totalHours / weeklyTasks.length).toFixed(2) : "0.00";
   document.getElementById("averageTime").textContent = avg;
+
   const count = {};
   weeklyTasks.forEach(t => count[t.subjectId] = (count[t.subjectId] || 0) + t.duration);
   let maxHours = -1, mostId = null;
@@ -226,33 +255,36 @@ function updateDashboard() {
     if (count[id] > maxHours) { maxHours = count[id]; mostId = id; }
   }
   document.getElementById("mostStudied").textContent = subjects.find(s => s.id == mostId)?.name || "N/A";
+
   const weeklyTarget = subjects.reduce((sum, s) => sum + (s.target || 0), 0);
   const percent = weeklyTarget > 0 ? Math.min((totalHours / weeklyTarget) * 100, 100) : 0;
   document.getElementById("progressFill").style.width = percent + "%";
   document.getElementById("progressText").textContent = percent.toFixed(1) + "%";
 }
+
 // ────────────────────────────────────────────────
-// Notifications with Sound
+// Notifications
 // ────────────────────────────────────────────────
 function playChime() {
   const chime = document.getElementById("notifyChime");
   if (chime) {
     chime.currentTime = 0;
-    chime.play().catch(e => console.log("Sound needs user interaction first:", e));
-  } else {
-    new Audio("notification.mp3").play().catch(e => console.log("Sound failed:", e));
+    chime.play().catch(e => console.log("Sound needs interaction:", e));
   }
 }
+
 function scheduleNotification(date, time, title, taskId) {
   if (!("Notification" in window)) return;
   if (Notification.permission !== "granted" && Notification.permission !== "denied") {
     Notification.requestPermission();
   }
   if (Notification.permission === "denied") return;
+
   const scheduledTime = new Date(`${date}T${time}:00`).getTime();
   const now = Date.now();
   const diffMs = scheduledTime - now;
-  if (diffMs > 0 && diffMs < 86400000) {
+
+  if (diffMs > 0 && diffMs < 86400000) { // within 24h
     setTimeout(() => {
       if (Notification.permission === "granted") {
         new Notification("📚 StudyFlow Reminder", {
@@ -262,13 +294,17 @@ function scheduleNotification(date, time, title, taskId) {
         playChime();
       }
     }, diffMs);
+    soundTip.style.display = "block";
+    setTimeout(() => { soundTip.style.display = "none"; }, 8000);
   }
+
   let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
   pending = pending.filter(p => p.taskId !== taskId);
   pending.push({ taskId, title, date, time, scheduledTime });
-  pending = pending.filter(p => p.scheduledTime > now - 172800000);
+  pending = pending.filter(p => p.scheduledTime > now - 172800000); // keep ~2 days
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(pending));
 }
+
 function checkAndNotifyPending() {
   if (Notification.permission !== "granted") return;
   const now = Date.now();
@@ -277,9 +313,10 @@ function checkAndNotifyPending() {
   const remaining = [];
   pending.forEach(p => {
     const diff = p.scheduledTime - now;
-    if (Math.abs(diff) <= 900000) toNotify.push(p);
+    if (Math.abs(diff) <= 900000) toNotify.push(p); // within ~15 min
     else if (diff > 0) remaining.push(p);
   });
+
   toNotify.forEach(p => {
     new Notification("📚 Study Reminder", {
       body: `"${p.title}" was at ${p.time} – time to study!`,
@@ -287,8 +324,10 @@ function checkAndNotifyPending() {
     });
     playChime();
   });
+
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(remaining));
 }
+
 function saveData() {
   localStorage.setItem("subjects", JSON.stringify(subjects));
   localStorage.setItem("tasks", JSON.stringify(tasks));
