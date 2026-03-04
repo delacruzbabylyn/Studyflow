@@ -30,7 +30,11 @@ document.getElementById("taskDate").min = new Date().toISOString().split("T")[0]
 enterBtn.addEventListener("click", () => {
   const name = userNameInput.value.trim();
   if (!name) return alert("Please enter your name!");
-  userProfile = { name, bio: userBioInput.value.trim() || "Student on a mission 🚀" };
+  
+  userProfile = { 
+    name, 
+    bio: userBioInput.value.trim() || "Student on a mission 🚀" 
+  };
   localStorage.setItem("studyflowUser", JSON.stringify(userProfile));
   showMainApp(name);
 });
@@ -41,16 +45,19 @@ function showMainApp(name) {
     welcomeScreen.style.display = "none";
     mainApp.classList.remove("hidden");
   }, 500);
+
   userGreeting.innerHTML = `Hi ${name}! Let's crush this week 📈`;
   renderSubjects();
   switchDay({ target: document.querySelector(`#dayTabs button[data-day="${selectedDay}"]`) || document.querySelector('#dayTabs button') });
   updateDashboard();
   checkAndNotifyPending();
-  setInterval(checkAndNotifyPending, 30000);
 
-  // Unlock audio context on first real interaction
+  // Periodic checks
+  setInterval(checkAndNotifyPending, 90000); // 1.5 min
+
+  // Unlock audio context (for chime/sound)
   const unlockAudio = () => {
-    const audio = new Audio("notification.mp3");
+    const audio = new Audio("notification.mp3"); // siguraduhin may file ka nito
     audio.volume = 0.01;
     audio.play().catch(() => {}).then(() => audio.pause());
     document.removeEventListener('click', unlockAudio);
@@ -66,10 +73,12 @@ function showMainApp(name) {
 document.getElementById("addSubjectBtn").addEventListener("click", () => {
   const name = document.getElementById("subjectName").value.trim();
   const target = parseFloat(document.getElementById("targetHours").value);
+  
   if (!name || isNaN(target) || target < 0) {
     alert("Please enter subject name and valid weekly hours");
     return;
   }
+
   if (editingSubjectId !== null) {
     const sub = subjects.find(s => s.id === editingSubjectId);
     if (sub) {
@@ -80,6 +89,7 @@ document.getElementById("addSubjectBtn").addEventListener("click", () => {
   } else {
     subjects.push({ id: Date.now(), name, target });
   }
+
   document.getElementById("subjectName").value = "";
   document.getElementById("targetHours").value = "";
   saveData();
@@ -90,13 +100,14 @@ document.getElementById("addSubjectBtn").addEventListener("click", () => {
 function renderSubjects() {
   subjectList.innerHTML = "";
   subjectSelect.innerHTML = '<option value="">Select subject</option>';
+
   subjects.forEach(sub => {
     const li = document.createElement("li");
     li.innerHTML = `
       ${sub.name} (${sub.target}h/week)
-      <div>
-        <button onclick="editSubject(${sub.id})">✏️ Edit</button>
-        <button onclick="deleteSubject(${sub.id})">❌ Delete</button>
+      <div class="actions">
+        <button class="edit-btn" data-id="${sub.id}">✏️ Edit</button>
+        <button class="delete-btn" data-id="${sub.id}">❌ Delete</button>
       </div>
     `;
     subjectList.appendChild(li);
@@ -107,24 +118,6 @@ function renderSubjects() {
     subjectSelect.appendChild(opt);
   });
 }
-
-window.editSubject = function(id) {
-  const sub = subjects.find(s => s.id === id);
-  if (!sub) return;
-  document.getElementById("subjectName").value = sub.name;
-  document.getElementById("targetHours").value = sub.target;
-  editingSubjectId = id;
-};
-
-window.deleteSubject = function(id) {
-  if (!confirm("Delete this subject and all its tasks?")) return;
-  subjects = subjects.filter(s => s.id !== id);
-  tasks = tasks.filter(t => t.subjectId !== id);
-  saveData();
-  renderSubjects();
-  renderTasks();
-  updateDashboard();
-};
 
 // ────────────────────────────────────────────────
 // Tasks + Day Switching
@@ -169,7 +162,14 @@ function handleTask() {
   saveData();
   renderTasks();
   updateDashboard();
-  scheduleNotification(date, time, title, thisTaskId);
+
+  // Schedule notification
+  const [hours, minutes] = time.split(":");
+  const dueDate = new Date(date);
+  dueDate.setHours(hours, minutes, 0, 0);
+  const dueTimestamp = dueDate.getTime();
+
+  scheduleReminder(thisTaskId, title, dueTimestamp);
 }
 
 function renderTasks() {
@@ -177,46 +177,85 @@ function renderTasks() {
   tasks.filter(t => t.day === selectedDay).forEach(t => {
     const sub = subjects.find(s => s.id === t.subjectId);
     const subjName = sub ? sub.name : "Unknown";
+
     const li = document.createElement("li");
     li.innerHTML = `
       ${subjName} – ${t.title} (${t.duration}h @ ${t.time})
-      <div>
-        <button onclick="editTask(${t.id})">✏️ Edit</button>
-        <button onclick="deleteTask(${t.id})">❌ Delete</button>
+      <div class="actions">
+        <button class="edit-btn" data-id="${t.id}">✏️ Edit</button>
+        <button class="delete-btn" data-id="${t.id}">❌ Delete</button>
       </div>
     `;
     taskList.appendChild(li);
   });
 }
 
-window.editTask = function(id) {
-  const t = tasks.find(x => x.id === id);
-  if (!t) return;
-  document.getElementById("taskTitle").value = t.title;
-  document.getElementById("taskDate").value = t.date;
-  document.getElementById("taskTime").value = t.time;
-  document.getElementById("taskDuration").value = t.duration;
-  subjectSelect.value = t.subjectId;
-  editingTaskId = id;
-};
-
-window.deleteTask = function(id) {
-  tasks = tasks.filter(t => t.id !== id);
-  saveData();
-  renderTasks();
-  updateDashboard();
-};
-
 function switchDay(e) {
   const btn = e.target.closest("button");
   if (!btn || !btn.dataset.day) return;
+
   selectedDay = parseInt(btn.dataset.day);
   document.querySelectorAll("#dayTabs button").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
+
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   document.getElementById("selectedDayTitle").textContent = days[selectedDay] + " Tasks";
   renderTasks();
 }
+
+// ────────────────────────────────────────────────
+// Event Delegation for Edit & Delete (para gumana ang delete!)
+// ────────────────────────────────────────────────
+subjectList.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  if (!id) return;
+
+  if (btn.classList.contains('edit-btn')) {
+    const sub = subjects.find(s => s.id === id);
+    if (sub) {
+      document.getElementById("subjectName").value = sub.name;
+      document.getElementById("targetHours").value = sub.target;
+      editingSubjectId = id;
+    }
+  } else if (btn.classList.contains('delete-btn')) {
+    if (confirm("Delete this subject and all its tasks?")) {
+      subjects = subjects.filter(s => s.id !== id);
+      tasks = tasks.filter(t => t.subjectId !== id);
+      saveData();
+      renderSubjects();
+      renderTasks();
+      updateDashboard();
+    }
+  }
+});
+
+taskList.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  if (!id) return;
+
+  if (btn.classList.contains('edit-btn')) {
+    const t = tasks.find(x => x.id === id);
+    if (t) {
+      document.getElementById("taskTitle").value = t.title;
+      document.getElementById("taskDate").value = t.date;
+      document.getElementById("taskTime").value = t.time;
+      document.getElementById("taskDuration").value = t.duration;
+      subjectSelect.value = t.subjectId;
+      editingTaskId = id;
+    }
+  } else if (btn.classList.contains('delete-btn')) {
+    if (confirm("Delete this task?")) {
+      tasks = tasks.filter(t => t.id !== id);
+      saveData();
+      renderTasks();
+      updateDashboard();
+    }
+  }
+});
 
 // ────────────────────────────────────────────────
 // Dashboard
@@ -245,6 +284,7 @@ function updateDashboard() {
   document.getElementById("totalSubjects").textContent = subjects.length;
   const totalHours = weeklyTasks.reduce((sum, t) => sum + t.duration, 0);
   document.getElementById("totalHours").textContent = totalHours.toFixed(1);
+
   const avg = weeklyTasks.length ? (totalHours / weeklyTasks.length).toFixed(2) : "0.00";
   document.getElementById("averageTime").textContent = avg;
 
@@ -261,28 +301,27 @@ function updateDashboard() {
   document.getElementById("progressFill").style.width = percent + "%";
   document.getElementById("progressText").textContent = percent.toFixed(1) + "%";
 }
-//notification 
+
+// ────────────────────────────────────────────────
+// Notifications
+// ────────────────────────────────────────────────
 function safeNotify(title, options = {}) {
-  if (Notification.permission !== "granted") return false;
+  if (Notification.permission !== "granted") return;
   try {
     new Notification(title, {
       icon: "/favicon.ico",
       ...options
     });
-    playChime?.(); // optional chaining in case function missing
-    return true;
+    if (typeof playChime === 'function') playChime();
   } catch (err) {
     console.warn("Notification failed", err);
-    return false;
   }
 }
 
-// When scheduling a new task / reminder
 function scheduleReminder(taskId, title, dueTimestamp) {
   const now = Date.now();
   const diffMs = dueTimestamp - now;
 
-  // Option A: short future → use setTimeout
   if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
     setTimeout(() => {
       safeNotify("📚 StudyFlow Reminder", {
@@ -291,9 +330,7 @@ function scheduleReminder(taskId, title, dueTimestamp) {
     }, diffMs);
   }
 
-  // Always save to persistent queue (this is the important part)
   let pending = JSON.parse(localStorage.getItem("studyflowPendingReminders") || "[]");
-  // Remove old version of same task
   pending = pending.filter(p => p.taskId !== taskId);
   pending.push({
     taskId,
@@ -301,12 +338,10 @@ function scheduleReminder(taskId, title, dueTimestamp) {
     scheduledTime: dueTimestamp,
     createdAt: now
   });
-  // Keep only recent + future items
   pending = pending.filter(p => p.scheduledTime > now - 2 * 86400000);
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(pending));
 }
 
-// The periodic checker (every 1–3 min is usually enough)
 function checkAndNotifyPending() {
   if (Notification.permission !== "granted") return;
 
@@ -317,9 +352,9 @@ function checkAndNotifyPending() {
 
   for (const p of pending) {
     const diff = p.scheduledTime - now;
-    if (diff <= 900_000 && diff >= -900_000) { // ±15 min window
+    if (diff <= 900000 && diff >= -900000) {
       toNotify.push(p);
-    } else if (diff > -86400000 * 2) { // don't keep very old items
+    } else if (diff > -86400000 * 2) {
       keep.push(p);
     }
   }
@@ -333,23 +368,33 @@ function checkAndNotifyPending() {
   localStorage.setItem("studyflowPendingReminders", JSON.stringify(keep));
 }
 
-// On page load / visibility change
+// Visibility change + periodic
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     checkAndNotifyPending();
   }
 });
 
-// Periodic check
-setInterval(checkAndNotifyPending, 90_000); // 1.5 minutes - reasonable compromise
+// ────────────────────────────────────────────────
+// Save & Helpers
+// ────────────────────────────────────────────────
+function saveData() {
+  localStorage.setItem("subjects", JSON.stringify(subjects));
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+}
 
-// Initial permission request (you can call this on first relevant user action)
-function requestNotificationPermission() {
-  if ("Notification" in window && Notification.permission === "default") {
-    Notification.requestPermission().then(perm => {
-      if (perm === "granted") {
-        checkAndNotifyPending(); // catch any missed ones right after permission
-      }
-    });
-  }
+// Optional: Permission button (kung idinagdag mo na sa HTML)
+const enableNotifBtn = document.getElementById('enableNotifications');
+if (enableNotifBtn) {
+  enableNotifBtn.addEventListener('click', () => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then(perm => {
+        if (perm === "granted") {
+          checkAndNotifyPending();
+          enableNotifBtn.textContent = "Reminders Enabled ✓";
+          enableNotifBtn.disabled = true;
+        }
+      });
+    }
+  });
 }
